@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f5c">
+<title>Kühlschrank</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --card: #fff; --text: #1d1d1b; --muted: #75736c;
+    --line: #e4e2db; --accent: #1f6f5c; --warn-bg: #fff4d6; --warn: #8a6200;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413; --card: #1e1e1c; --text: #ecebe6; --muted: #9a988f;
+      --line: #2e2d2a; --accent: #5fbfa4; --warn-bg: #3a2f10; --warn: #f0c75e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 24px);
+  }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0 8px; }
+  h1 { font-size: 22px; margin: 0; }
+  .upload {
+    background: var(--accent); color: #fff; border-radius: 999px; padding: 8px 14px;
+    font-weight: 600; font-size: 15px; cursor: pointer; white-space: nowrap;
+  }
+  .upload input { display: none; }
+  input[type=search] {
+    width: 100%; padding: 10px 12px; font-size: 16px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--card); color: var(--text); margin: 8px 0 4px;
+  }
+  .note { background: var(--warn-bg); color: var(--warn); border-radius: 10px; padding: 10px 12px; margin: 8px 0; font-size: 14px; }
+  .note:empty { display: none; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 20px 0 6px; }
+  ul { list-style: none; margin: 0; padding: 0; background: var(--card); border-radius: 12px; overflow: hidden; }
+  li { display: flex; justify-content: space-between; gap: 12px; padding: 11px 14px; border-top: 1px solid var(--line); }
+  li:first-child { border-top: 0; }
+  .name { font-weight: 500; overflow-wrap: anywhere; }
+  .meta { font-size: 13px; color: var(--muted); }
+  .right { text-align: right; flex-shrink: 0; }
+  .flag { color: var(--warn); }
+  .empty { color: var(--muted); text-align: center; padding: 40px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Kühlschrank</h1>
+  <label class="upload">+ Rechnungen
+    <input id="file" type="file" accept="application/pdf" multiple>
+  </label>
+</header>
+<input id="q" type="search" placeholder="Suchen, z. B. Milch">
+<div id="note" class="note"></div>
+<main id="list"><p class="empty">Lade …</p></main>
+
+<script>
+const euro = c => (c / 100).toLocaleString("de-AT", { style: "currency", currency: "EUR" });
+const DAY = 86400000;
+let items = [];
+
+function daysAgo(iso) {
+  const d = new Date(iso); d.setHours(0, 0, 0, 0);
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  return Math.round((t - d) / DAY);
+}
+function whenText(n) {
+  return n === 0 ? "heute" : n === 1 ? "gestern" : `vor ${n} Tagen`;
+}
+function group(n) {
+  return n <= 7 ? "Letzte 7 Tage" : n <= 30 ? "Letzte 30 Tage" : "Älter";
+}
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function render() {
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const shown = items.filter(i => i.text.toLowerCase().includes(q));
+  const list = document.getElementById("list");
+  if (!shown.length) {
+    list.innerHTML = `<p class="empty">${items.length ? "Nichts gefunden." : "Noch keine Rechnungen. Oben „+ Rechnungen“ tippen."}</p>`;
+    return;
+  }
+  const groups = {};
+  for (const i of shown) (groups[group(daysAgo(i.last_bought))] ??= []).push(i);
+  list.innerHTML = Object.entries(groups).map(([title, rows]) => `
+    <h2>${title}</h2>
+    <ul>${rows.map(i => `
+      <li>
+        <div>
+          <div class="name">${esc(i.text)}${i.needs_review ? ' <span class="flag" title="Bon prüfen">⚠</span>' : ""}</div>
+          <div class="meta">${whenText(daysAgo(i.last_bought))} · ${i.times_bought}× gekauft</div>
+        </div>
+        <div class="right">
+          <div>${i.last_quantity > 1 ? i.last_quantity + "× " : ""}${euro(i.last_unit_price)}</div>
+        </div>
+      </li>`).join("")}
+    </ul>`).join("");
+}
+
+async function load() {
+  const [itemsRes, receiptsRes] = await Promise.all([fetch("/api/items"), fetch("/api/receipts")]);
+  items = await itemsRes.json();
+  const receipts = await receiptsRes.json();
+  const review = receipts.filter(r => r.needs_review).length;
+  document.getElementById("note").textContent = review
+    ? `${review} Rechnung${review > 1 ? "en" : ""} zur Prüfung: Summe passt nicht oder Zeile unbekannt.` : "";
+  render();
+}
+
+document.getElementById("q").addEventListener("input", render);
+document.getElementById("file").addEventListener("change", async e => {
+  const form = new FormData();
+  for (const f of e.target.files) form.append("files", f);
+  e.target.value = "";
+  const note = document.getElementById("note");
+  note.textContent = "Lade hoch …";
+  const res = await (await fetch("/api/upload", { method: "POST", body: form })).json();
+  const count = s => res.filter(r => r.status === s).length;
+  await load();
+  const errors = res.filter(r => r.status.startsWith("Fehler"));
+  note.textContent = `${count("neu")} neu, ${count("doppelt")} schon vorhanden` +
+    (count("prüfen") ? `, ${count("prüfen")} zur Prüfung` : "") +
+    (errors.length ? `, ${errors.length} nicht lesbar` : "") + ".";
+});
+load();
+</script>
+</body>
+</html>
