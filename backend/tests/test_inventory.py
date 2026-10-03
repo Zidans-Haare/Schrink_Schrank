@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 
 from app.inventory import estimate
 
@@ -35,3 +35,29 @@ def test_letztes_drittel_ist_gelb():
 def test_rot_verschwindet_nach_karenzzeit():
     assert estimate(days_ago(8), 7, 7, TODAY).visible
     assert not estimate(days_ago(11), 7, 7, TODAY).visible
+
+
+def at(n, hour=12):
+    return datetime.combine(TODAY - timedelta(days=n), time(hour))
+
+
+def test_aufgebraucht_blendet_aus_bis_zum_naechsten_kauf():
+    e = estimate([at(2)], 7, 7, TODAY, [(at(1), "used_up")])
+    assert (e.status, e.visible, e.correction_days) == ("weg", False, 1)
+    e = estimate([at(2), at(0, 18)], 7, 7, TODAY, [(at(1), "used_up")])
+    assert e.status == "gruen" and e.correction is None
+
+
+def test_aufgebraucht_trainiert_die_verbrauchsdauer():
+    # Standard wäre 7 Tage, zweimal nach 3 Tagen aufgebraucht -> 3 Tage
+    bought = [at(20), at(10), at(1)]
+    fixes = [(at(17), "used_up"), (at(7), "used_up")]
+    e = estimate(bought, 30, 7, TODAY, fixes)
+    assert e.learned_days == 3 and e.expected_days == 3
+
+
+def test_noch_da_gibt_neue_frist_aber_nicht_ueber_haltbarkeit():
+    e = estimate([at(9)], 30, 7, TODAY, [(at(0), "still_there")])
+    assert (e.status, e.visible, e.days_left) == ("gruen", True, 4)
+    e = estimate([at(9)], 8, 7, TODAY, [(at(0), "still_there")])
+    assert e.status == "rot" and e.expired

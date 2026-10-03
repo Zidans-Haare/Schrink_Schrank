@@ -47,6 +47,14 @@ CREATE TABLE IF NOT EXISTS products (
     storage    TEXT               -- Kühlschrank, Tiefkühler, Vorrat
 );
 
+CREATE TABLE IF NOT EXISTS corrections (
+    id         INTEGER PRIMARY KEY,
+    product_id INTEGER NOT NULL REFERENCES products(id),
+    kind       TEXT NOT NULL CHECK (kind IN ('used_up', 'still_there')),
+    at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M', 'now', 'localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_corrections_product ON corrections(product_id);
+
 CREATE TABLE IF NOT EXISTS aliases (
     text       TEXT PRIMARY KEY,  -- Bontext
     product_id INTEGER NOT NULL REFERENCES products(id)

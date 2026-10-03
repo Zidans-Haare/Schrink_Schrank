@@ -3,7 +3,10 @@
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, UploadFile
+from typing import Literal
+
+from fastapi import FastAPI, HTTPException, UploadFile
+from pydantic import BaseModel
 from fastapi.responses import FileResponse
 
 from . import inventory
@@ -28,6 +31,24 @@ def fridge():
 @app.get("/api/shopping")
 def shopping():
     return inventory.shopping_list(connect())
+
+
+class CorrectionIn(BaseModel):
+    kind: Literal["used_up", "still_there"]
+
+
+@app.post("/api/products/{product_id}/corrections")
+def add_correction(product_id: int, body: CorrectionIn):
+    conn = connect()
+    if not conn.execute("SELECT 1 FROM products WHERE id = ?", (product_id,)).fetchone():
+        raise HTTPException(404, "Produkt nicht gefunden")
+    return {"id": inventory.add_correction(conn, product_id, body.kind)}
+
+
+@app.delete("/api/corrections/{correction_id}")
+def delete_correction(correction_id: int):
+    inventory.delete_correction(connect(), correction_id)
+    return {"ok": True}
 
 
 @app.get("/api/receipts")

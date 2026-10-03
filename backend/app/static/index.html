@@ -224,7 +224,31 @@
   dialog dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0 0 16px; font-size: 15px; }
   dialog dt { color: var(--muted); }
   dialog dd { margin: 0; }
+  dialog .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  dialog .actions button { padding: 12px 10px; border-radius: 10px; border: 0; cursor: pointer; font-weight: 700; color: #fff; }
+  dialog .actions button[hidden] { display: none; }
+  dialog .actions:has(button[hidden]) { grid-template-columns: 1fr; }
+  #act-used-up { background: var(--rot); }
+  #act-still-there { background: var(--gruen); }
+  @media (prefers-color-scheme: dark) { dialog .actions button { color: #10201b; } }
   dialog .close { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--glass); background: var(--tag); cursor: pointer; font-weight: 600; }
+
+  /* Vermutlich weg */
+  .gone { margin-top: 22px; }
+  .gone summary { cursor: pointer; font-size: 17px; font-weight: 800; padding: 4px 0; }
+  .gone p { font-size: 14px; color: var(--muted); margin: 4px 0 10px; }
+  .tag.weg, .gone .tag { --state: var(--muted); opacity: .85; }
+  .gone .tag b { text-decoration: none; }
+
+  /* Rückmeldung mit Rückgängig */
+  .toast {
+    position: fixed; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom) + 16px);
+    max-width: 488px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--ink); color: var(--wall); border-radius: 12px; padding: 12px 14px;
+    box-shadow: 0 10px 24px var(--shadow); font-size: 15px;
+  }
+  .toast[hidden] { display: none; }
+  .toast button { border: 0; background: none; color: inherit; font-weight: 800; text-decoration: underline; cursor: pointer; padding: 4px; }
 </style>
 </head>
 <body>
@@ -262,6 +286,12 @@
     <div id="pantry"></div>
   </section>
 
+  <details class="gone" id="gone" hidden>
+    <summary id="gone-title">Vermutlich weg</summary>
+    <p>Hat die App sich geirrt? Antippen und „Noch da“ wählen.</p>
+    <div class="items" id="gone-items"></div>
+  </details>
+
   <section class="extra" id="extra"></section>
 </div>
 
@@ -269,8 +299,14 @@
   <h3 id="detail-name"></h3>
   <p class="cat" id="detail-cat"></p>
   <dl id="detail-facts"></dl>
+  <div class="actions">
+    <button id="act-used-up">Aufgebraucht</button>
+    <button id="act-still-there">Noch da</button>
+  </div>
   <button class="close" id="detail-close">Schließen</button>
 </dialog>
+
+<div class="toast" id="toast" role="status" hidden><span id="toast-text"></span><button id="toast-undo">Rückgängig</button></div>
 
 <script>
 // Ein Boden pro Gruppe, wie in einem echten Kühlschrank.
@@ -297,6 +333,7 @@ function updateHandle() {
 }
 
 function stateText(i) {
+  if (i.status === "weg") return "aufgebraucht";
   if (i.status === "rot") return i.expired ? "abgelaufen" : "wohl aufgebraucht";
   if (i.status === "gelb") return i.days_left <= 1 ? "bald weg" : `bald weg, ca. ${i.days_left} Tage`;
   return i.days_left === 1 ? "noch ca. 1 Tag" : `noch ca. ${i.days_left} Tage`;
@@ -336,8 +373,13 @@ function render(data, shopping) {
   $("pantry").innerHTML = shelves(at("vorrat"), SHELVES.vorrat, "board") || `<p class="hollow">Im Vorrat ist wahrscheinlich nichts mehr.</p>`;
 
   $("note").innerHTML = `<h2>Einkaufsliste</h2>` + (shopping.length
-    ? `<ul>${shopping.map(s => `<li>${esc(s.name)}<small>alle ${Math.round(s.interval_days)} T.</small></li>`).join("")}</ul>`
+    ? `<ul>${shopping.map(s => `<li>${esc(s.name)}<small>${s.correction === "used_up" ? "aufgebraucht" : `alle ${Math.round(s.interval_days)} T.`}</small></li>`).join("")}</ul>`
     : `<p class="empty">Nichts fällig.</p>`);
+
+  const gone = data.gone || [];
+  $("gone").hidden = !gone.length;
+  $("gone-title").textContent = `Vermutlich weg (${gone.length})`;
+  $("gone-items").innerHTML = gone.map(tag).join("");
 
   const extra = [];
   if (data.unknown.length) {
@@ -354,9 +396,12 @@ function showDetail(i) {
     ["Preis", euro(i.last_price)],
     ["Gekauft", `${i.times_bought}× laut deinen Rechnungen`],
     ["Nachkauf", i.interval_days ? `etwa alle ${tage(Math.round(i.interval_days)).replace("Tagen", "Tage")}` : "noch zu wenige Käufe"],
+    ...(i.learned_days ? [["Verbrauch", `laut deinen Korrekturen ca. ${tage(Math.round(i.learned_days)).replace("Tagen", "Tage")}`]] : []),
     ["Geschätzt", `reicht ca. ${tage(i.expected_days).replace("Tagen", "Tage")}`],
-    ["Stand", stateText(i)],
+    ["Stand", stateText(i) + (i.correction === "still_there" ? ` (bestätigt ${ago(i.correction_days)})` : "")],
   ];
+  current = i;
+  $("act-used-up").hidden = i.status === "weg";
   $("detail-facts").innerHTML = facts.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("");
   $("detail").showModal();
 }
@@ -370,6 +415,37 @@ $("freezer-handle").addEventListener("click", () => {
   updateHandle();
 });
 $("detail-close").addEventListener("click", () => $("detail").close());
+
+let current = null;
+let toastTimer = null;
+
+async function correct(kind) {
+  const item = current;
+  $("detail").close();
+  const res = await fetch(`/api/products/${item.id}/corrections`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind }),
+  });
+  if (!res.ok) { showToast("Speichern hat nicht geklappt. Bitte nochmal versuchen."); return; }
+  const { id } = await res.json();
+  await load();
+  showToast(`${item.name}: ${kind === "used_up" ? "aufgebraucht" : "noch da"}`, async () => {
+    await fetch(`/api/corrections/${id}`, { method: "DELETE" });
+    await load();
+    showToast(`${item.name}: zurückgenommen`);
+  });
+}
+
+function showToast(text, undo) {
+  clearTimeout(toastTimer);
+  $("toast-text").textContent = text;
+  $("toast-undo").hidden = !undo;
+  $("toast-undo").onclick = () => { $("toast").hidden = true; undo(); };
+  $("toast").hidden = false;
+  toastTimer = setTimeout(() => $("toast").hidden = true, 6000);
+}
+
+$("act-used-up").addEventListener("click", () => correct("used_up"));
+$("act-still-there").addEventListener("click", () => correct("still_there"));
 $("detail").addEventListener("click", e => { if (e.target === $("detail")) $("detail").close(); });
 
 async function load() {
