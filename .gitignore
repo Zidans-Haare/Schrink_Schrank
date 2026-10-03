@@ -1,0 +1,16 @@
+# Private Rechnungen (Kartendaten, Einkaufsverhalten) – nie ins Repo
+Spar Rechnungen/
+*.pdf
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Laufzeitdaten und Geheimnisse
+*.db
+*.sqlite
+.env
+
+.DS_Store
