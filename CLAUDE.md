@@ -21,7 +21,9 @@ Herkunft: Die Idee stammt aus dem HTW-Businessplan "MealMaster" (Inventar-Bauste
 ## Gesetzte Entscheidungen
 
 - **Form:** PWA, mobil-first, mit Offline-Cache der letzten Inventaransicht (schlechter Empfang im Markt)
-- **Betrieb:** eigener Server unter eigener Domain, nur für eine Person, Zugang über ein einziges Passwort (keine Nutzerverwaltung)
+- **Betrieb:** eigener Server unter `fridge.olomek.com` (Schreibweise beim Einrichten bestätigen), nur für eine Person. Docker Compose mit Caddy für HTTPS, Anleitung in `DEPLOY.md`.
+- **Zugang:** bewusst **kein Passwort** (Nicks Entscheidung vom 03.10.2026, ursprünglich war ein einziges Passwort geplant). Wer die Adresse kennt, sieht die Daten. Bei Bedarf Basic-Auth im Caddyfile, siehe `DEPLOY.md`.
+- **Stack:** Python + FastAPI, SQLite, pdfplumber. Frontend ist eine einzelne HTML-Datei mit Vanilla-JS (`backend/app/static/index.html`), kein Build-Schritt. PWA mit Manifest, Service Worker (`sw.js`) und lokalen Schriften.
 - **Datenhaltung:** SQLite
 - **Datenquelle:** exportierte SPAR-Rechnungs-PDFs. Die PDFs enthalten durchsuchbaren Text, OCR ist also nicht nötig. SPAR bietet nur den Export pro Rechnung und keine API.
 - **Parser:** deterministischer Regex-Parser für das SPAR-Layout. Er prüft die Summe der erkannten Positionen gegen die Bonsumme (Vorbild: rewe-ebon-parser von webD97 und e-kotov). Wenn die Summe abweicht, kommt der Bon in eine Prüfliste.
@@ -47,7 +49,18 @@ Herkunft: Die Idee stammt aus dem HTW-Businessplan "MealMaster" (Inventar-Bauste
 - heisse-preise.io / `heisse-preise-data`: Preisdaten für den optionalen Vergleich
 - HNGRY (Liebherr): Konzeptvorbild für "ist wahrscheinlich noch da"
 
+## Stand (03.10.2026)
+
+Fertig: Parser (54 echte Rechnungen, alle Summen- und Steuerprüfungen grün), Import mit Duplikaterkennung, Kategorien und Bontext-Zuordnung (`backend/app/seed.py`), Schätzung und automatische Einkaufsliste (`backend/app/inventory.py`), Kühlschrank-Oberfläche, Korrekturen „aufgebraucht“ / „noch da“ mit Lernen der Verbrauchsdauer, PWA mit Offline-Modus und Offline-Warteschlange für Korrekturen.
+
+Offen: Handeingabe (Markt-Gemüse), Sprachmodell für unbekannte Bontexte samt Bestätigung, Haltbarkeiten mit echten FoodKeeper-Daten abgleichen, Server-Einrichtung.
+
+Entwicklung: `cd backend && .venv/bin/uvicorn app.main:app --reload`, Tests mit `.venv/bin/pytest`. Die Rechnungen liegen lokal in `Spar Rechnungen/` und nie im Repo (öffentlich); ohne sie überspringen sich die Tests, die sie brauchen.
+
 ## Offene Fragen fürs Brainstorming
+
+Erledigt: 1 (Stack), 2 (Domain), 4 (kein Passwort), 7 (Reihenfolge), 8 (Testdaten). Noch offen: 3, 5, 6.
+
 
 1. **Stack:** Was läuft auf dem Server (Docker, Node, Python)? Passend dazu Backend (z. B. FastAPI oder Node) und Frontend (z. B. SvelteKit oder Next.js) wählen.
 2. **Domain:** Welche Domain oder Subdomain ist dafür vorgesehen?

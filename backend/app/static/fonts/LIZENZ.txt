@@ -1,0 +1,3 @@
+Bricolage Grotesque und Caveat, beide unter der SIL Open Font License 1.1
+(https://openfontlicense.org). Lateinischer Teilsatz von Google Fonts, lokal
+abgelegt, damit die App offline gleich aussieht.

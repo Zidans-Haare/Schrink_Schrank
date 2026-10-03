@@ -1,0 +1,8 @@
+# Caddy holt das HTTPS-Zertifikat für die Domain automatisch (Let's Encrypt).
+{$DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 50MB
+	}
+	reverse_proxy app:8000
+}

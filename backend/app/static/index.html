@@ -3,12 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#e6ecec">
+<meta name="theme-color" content="#e6ecec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121918" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kühlschrank">
 <title>Kühlschrank</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<link rel="preload" href="/static/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+  @font-face {
+    font-family: "Bricolage Grotesque"; font-style: normal; font-weight: 200 800; font-display: swap;
+    src: url(/static/fonts/bricolage-grotesque-latin.woff2) format("woff2");
+  }
+  @font-face {
+    font-family: "Caveat"; font-style: normal; font-weight: 400 700; font-display: swap;
+    src: url(/static/fonts/caveat-latin.woff2) format("woff2");
+  }
   :root {
     --wall: #e6ecec;
     --enamel: #bfe0d5;
@@ -418,20 +430,79 @@ $("detail-close").addEventListener("click", () => $("detail").close());
 
 let current = null;
 let toastTimer = null;
+let lastFridge = null, lastShopping = null;
+
+// Offline getippte Korrekturen warten hier, bis wieder Netz da ist.
+const QUEUE_KEY = "pending-corrections";
+function readQueue() { try { return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; } catch { return []; } }
+function writeQueue(q) { try { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); } catch {} }
+const localIso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
+function postCorrection(productId, kind, at) {
+  return fetch(`/api/products/${productId}/corrections`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(at ? { kind, at } : { kind }),
+  });
+}
+
+async function flushQueue() {
+  const queue = readQueue();
+  if (!queue.length) return;
+  const rest = [];
+  for (const q of queue) {
+    try {
+      const res = await postCorrection(q.productId, q.kind, q.at);
+      if (!res.ok && res.status >= 500) rest.push(q); // Serverfehler: später nochmal
+    } catch { rest.push(q); }
+  }
+  writeQueue(rest);
+  if (rest.length < queue.length) showToast(`${queue.length - rest.length} offline gespeicherte Korrektur(en) übertragen`);
+}
+
+// Ohne Netz die Ansicht sofort anpassen, so wie es der Server täte.
+function applyLocally(productId, kind) {
+  const f = structuredClone(lastFridge);
+  const pick = list => { const i = list.findIndex(x => x.id === productId); return i < 0 ? null : list.splice(i, 1)[0]; };
+  const item = pick(f.items) || pick(f.gone);
+  if (!item) return;
+  if (kind === "used_up") {
+    f.gone.unshift({ ...item, status: "weg", remaining: 0, correction: "used_up" });
+  } else {
+    f.items.push({ ...item, status: item.expired ? "rot" : "gruen", remaining: item.expired ? 0 : 1,
+      days_left: Math.max(2, Math.round(item.expected_days / 2)), correction: "still_there", correction_days: 0 });
+  }
+  lastFridge = f;
+  render(f, lastShopping);
+}
 
 async function correct(kind) {
   const item = current;
   $("detail").close();
-  const res = await fetch(`/api/products/${item.id}/corrections`, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind }),
-  });
+  const label = kind === "used_up" ? "aufgebraucht" : "noch da";
+  let res;
+  try {
+    res = await postCorrection(item.id, kind);
+  } catch {
+    const entry = { productId: item.id, kind, at: localIso(new Date()) };
+    writeQueue([...readQueue(), entry]);
+    applyLocally(item.id, kind);
+    showToast(`${item.name}: ${label}. Offline gespeichert, wird gesendet, sobald du Netz hast.`, () => {
+      writeQueue(readQueue().filter(q => !(q.productId === entry.productId && q.kind === entry.kind && q.at === entry.at)));
+      load();
+    });
+    return;
+  }
   if (!res.ok) { showToast("Speichern hat nicht geklappt. Bitte nochmal versuchen."); return; }
   const { id } = await res.json();
   await load();
-  showToast(`${item.name}: ${kind === "used_up" ? "aufgebraucht" : "noch da"}`, async () => {
-    await fetch(`/api/corrections/${id}`, { method: "DELETE" });
-    await load();
-    showToast(`${item.name}: zurückgenommen`);
+  showToast(`${item.name}: ${label}`, async () => {
+    try {
+      await fetch(`/api/corrections/${id}`, { method: "DELETE" });
+      await load();
+      showToast(`${item.name}: zurückgenommen`);
+    } catch {
+      showToast("Ohne Netz kann ich das nicht zurücknehmen. Versuch es gleich nochmal.");
+    }
   });
 }
 
@@ -449,12 +520,32 @@ $("act-still-there").addEventListener("click", () => correct("still_there"));
 $("detail").addEventListener("click", e => { if (e.target === $("detail")) $("detail").close(); });
 
 async function load() {
-  const [fridge, shopping, receipts] = await Promise.all(
-    ["/api/fridge", "/api/shopping", "/api/receipts"].map(u => fetch(u).then(r => r.json())));
+  await flushQueue();
+  let responses;
+  try {
+    responses = await Promise.all(["/api/fridge", "/api/shopping", "/api/receipts"].map(u => fetch(u)));
+  } catch {
+    $("notice").textContent = "Kein Netz und noch kein gespeicherter Stand. Öffne die App einmal mit Netz.";
+    return;
+  }
+  const [fridge, shopping, receipts] = await Promise.all(responses.map(r => r.json()));
+  lastFridge = fridge; lastShopping = shopping;
   render(fridge, shopping);
+  // Noch nicht übertragene Korrekturen obendrauf anwenden.
+  for (const q of readQueue()) applyLocally(q.productId, q.kind);
+
+  const offline = responses[0].headers.get("X-Offline");
   const review = receipts.filter(r => r.needs_review).length;
-  if (!receipts.length) $("notice").textContent = "Noch keine Rechnungen. Lade deine SPAR-PDFs hoch, dann füllt sich der Kühlschrank.";
-  else if (review) $("notice").textContent = `${review} Rechnung${review > 1 ? "en" : ""} zur Prüfung: Summe passt nicht oder Zeile unbekannt.`;
+  if (offline) {
+    const stamp = new Date(responses[0].headers.get("Date"));
+    $("notice").textContent = `Offline. Stand von ${stamp.toLocaleString("de-AT", { weekday: "short", hour: "2-digit", minute: "2-digit" })}.`;
+  } else if (!receipts.length) {
+    $("notice").textContent = "Noch keine Rechnungen. Lade deine SPAR-PDFs hoch, dann füllt sich der Kühlschrank.";
+  } else if (review) {
+    $("notice").textContent = `${review} Rechnung${review > 1 ? "en" : ""} zur Prüfung: Summe passt nicht oder Zeile unbekannt.`;
+  } else {
+    $("notice").textContent = "";
+  }
 }
 
 $("file").addEventListener("change", async e => {
@@ -462,7 +553,13 @@ $("file").addEventListener("change", async e => {
   for (const f of e.target.files) form.append("files", f);
   e.target.value = "";
   $("notice").textContent = "Lade hoch …";
-  const res = await (await fetch("/api/upload", { method: "POST", body: form })).json();
+  let res;
+  try {
+    res = await (await fetch("/api/upload", { method: "POST", body: form })).json();
+  } catch {
+    $("notice").textContent = "Hochladen geht nur mit Netz. Versuch es später nochmal.";
+    return;
+  }
   const count = s => res.filter(r => r.status === s).length;
   const errors = res.filter(r => r.status.startsWith("Fehler")).length;
   await load();
@@ -471,6 +568,8 @@ $("file").addEventListener("change", async e => {
     (errors ? `, ${errors} nicht lesbar` : "") + ".";
 });
 
+window.addEventListener("online", load);
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
 load().then(() => $("fridge").classList.add("lamp-on"));
 </script>
 </body>

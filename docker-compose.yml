@@ -1,0 +1,30 @@
+# Start:  DOMAIN=fridge.olomek.com docker compose up -d --build
+services:
+  app:
+    build: ./backend
+    restart: unless-stopped
+    volumes:
+      - ./data:/data              # SQLite-Datenbank, hier sichern
+      - ./import:/import:ro       # optional: PDFs zum Erstimport
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      - DOMAIN=${DOMAIN:?DOMAIN setzen, z. B. fridge.olomek.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -263,11 +263,11 @@ def shopping_list(conn: sqlite3.Connection, today: datetime | None = None) -> li
     return result
 
 
-def add_correction(conn: sqlite3.Connection, product_id: int, kind: str) -> int:
+def add_correction(conn: sqlite3.Connection, product_id: int, kind: str, at: datetime | None = None) -> int:
     with conn:
         return conn.execute(
             "INSERT INTO corrections (product_id, kind, at) VALUES (?, ?, ?)",
-            (product_id, kind, now().isoformat(timespec="minutes")),
+            (product_id, kind, (at or now()).isoformat(timespec="minutes")),
         ).lastrowid
 
 

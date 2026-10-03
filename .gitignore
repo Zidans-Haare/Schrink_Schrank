@@ -14,3 +14,8 @@ __pycache__/
 .env
 
 .DS_Store
+
+# Server-Betrieb
+/data/
+/import/
+.env
