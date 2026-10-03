@@ -3,129 +3,399 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1f6f5c">
+<meta name="theme-color" content="#e6ecec">
 <title>Kühlschrank</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f6f5f1; --card: #fff; --text: #1d1d1b; --muted: #75736c;
-    --line: #e4e2db; --accent: #1f6f5c; --warn-bg: #fff4d6; --warn: #8a6200;
+    --wall: #e6ecec;
+    --enamel: #bfe0d5;
+    --enamel-edge: #9fc9bb;
+    --inside: #f7fbfb;
+    --inside-lamp: #ffffff;
+    --glass: #cfe3e8;
+    --frost: #e4f0f7;
+    --wood: #c89d6e;
+    --wood-edge: #a77b4c;
+    --tag: #ffffff;
+    --ink: #17312c;
+    --muted: #587069;
+    --note: #fff6a8;
+    --note-ink: #2b2a1c;
+    --magnet: #2f5bd0;
+    --gruen: #2e8b57;
+    --gelb: #d99a0b;
+    --rot: #cc4636;
+    --shadow: rgba(23, 49, 44, .16);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #141413; --card: #1e1e1c; --text: #ecebe6; --muted: #9a988f;
-      --line: #2e2d2a; --accent: #5fbfa4; --warn-bg: #3a2f10; --warn: #f0c75e;
+      --wall: #121918;
+      --enamel: #35554d;
+      --enamel-edge: #27423b;
+      --inside: #1b2523;
+      --inside-lamp: #26332f;
+      --glass: #33494a;
+      --frost: #1f2c33;
+      --wood: #6b5136;
+      --wood-edge: #4e3a26;
+      --tag: #253230;
+      --ink: #e5efec;
+      --muted: #9fb4ae;
+      --note: #ece27e;
+      --magnet: #5b82ea;
+      --gruen: #4fbf80;
+      --gelb: #f0bb3a;
+      --rot: #ef6b5b;
+      --shadow: rgba(0, 0, 0, .45);
     }
   }
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 24px);
+    margin: 0;
+    background: var(--wall);
+    color: var(--ink);
+    font: 15px/1.35 "Bricolage Grotesque", -apple-system, system-ui, sans-serif;
+    padding: calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 32px);
   }
-  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0 8px; }
-  h1 { font-size: 22px; margin: 0; }
-  .upload {
-    background: var(--accent); color: #fff; border-radius: 999px; padding: 8px 14px;
-    font-weight: 600; font-size: 15px; cursor: pointer; white-space: nowrap;
+  .wrap { max-width: 520px; margin: 0 auto; }
+  button, label.button { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--magnet); outline-offset: 2px; }
+
+  /* Kopfzeile */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .today { color: var(--muted); font-size: 14px; }
+  label.button {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    background: var(--ink); color: var(--wall); border-radius: 999px;
+    padding: 8px 14px; font-weight: 600; font-size: 14px; white-space: nowrap;
   }
-  .upload input { display: none; }
-  input[type=search] {
-    width: 100%; padding: 10px 12px; font-size: 16px; border-radius: 10px;
-    border: 1px solid var(--line); background: var(--card); color: var(--text); margin: 8px 0 4px;
+  label.button input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  label.button:focus-within { outline: 3px solid var(--magnet); outline-offset: 2px; }
+  .notice { font-size: 14px; color: var(--muted); margin: -4px 0 12px; }
+  .notice:empty { display: none; }
+
+  /* Gehäuse */
+  .fridge {
+    background: var(--enamel);
+    border: 2px solid var(--enamel-edge);
+    border-radius: 28px 28px 18px 18px;
+    padding: 10px;
+    box-shadow: 0 18px 30px -18px var(--shadow);
   }
-  .note { background: var(--warn-bg); color: var(--warn); border-radius: 10px; padding: 10px 12px; margin: 8px 0; font-size: 14px; }
-  .note:empty { display: none; }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 20px 0 6px; }
-  ul { list-style: none; margin: 0; padding: 0; background: var(--card); border-radius: 12px; overflow: hidden; }
-  li { display: flex; justify-content: space-between; gap: 12px; padding: 11px 14px; border-top: 1px solid var(--line); }
-  li:first-child { border-top: 0; }
-  .name { font-weight: 500; overflow-wrap: anywhere; }
-  .meta { font-size: 13px; color: var(--muted); }
-  .right { text-align: right; flex-shrink: 0; }
-  .flag { color: var(--warn); }
-  .empty { color: var(--muted); text-align: center; padding: 40px 0; }
+
+  /* Tiefkühler-Tür mit Zettel */
+  .freezer-door {
+    position: relative;
+    min-height: 150px; padding: 14px 14px 46px;
+    border-radius: 20px 20px 8px 8px;
+    background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 60%), var(--enamel);
+    border: 1px solid var(--enamel-edge);
+  }
+  .badge {
+    display: block; text-align: center; margin: 8px 0 0;
+    font-weight: 800; font-style: italic; font-size: 13px; letter-spacing: .02em;
+    color: var(--muted);
+  }
+  .handle {
+    position: absolute; left: 8px; right: 8px; bottom: 6px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 6px; border: 0; background: none; cursor: pointer; border-radius: 8px;
+    color: var(--muted); font-size: 13px;
+  }
+  .handle::before {
+    content: ""; flex: 0 0 38%; height: 8px; border-radius: 99px;
+    background: linear-gradient(180deg, #f4f7f7, #a9b6b4);
+    box-shadow: 0 1px 2px var(--shadow);
+  }
+  .freezer-door.open { border-radius: 20px 20px 0 0; }
+  .freezer-inside {
+    background: linear-gradient(180deg, var(--frost), var(--inside));
+    border: 1px solid var(--enamel-edge); border-top: 0;
+    border-radius: 0 0 8px 8px;
+    padding: 12px 10px 8px;
+  }
+
+  /* Einkaufszettel */
+  .note {
+    position: relative; width: min(86%, 300px);
+    background: var(--note); color: var(--note-ink);
+    padding: 22px 16px 14px;
+    transform: rotate(-1.6deg);
+    box-shadow: 0 8px 14px -8px rgba(0,0,0,.35);
+    font-family: "Caveat", "Bradley Hand", cursive;
+    cursor: default;
+  }
+  .note::before {
+    content: ""; position: absolute; top: -9px; left: 50%; width: 22px; height: 22px; margin-left: -11px;
+    border-radius: 50%; background: radial-gradient(circle at 35% 30%, #9fb6ff, var(--magnet) 60%);
+    box-shadow: 0 3px 4px rgba(0,0,0,.3);
+  }
+  .note h2 { font-size: 26px; font-weight: 700; margin: 0 0 4px; line-height: 1; }
+  .note ul { list-style: none; margin: 0; padding: 0; }
+  .note li { font-size: 22px; line-height: 1.15; padding: 3px 0; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .note small { font-family: "Bricolage Grotesque", system-ui, sans-serif; font-size: 11px; color: #6b6849; white-space: nowrap; }
+  .note .empty { font-size: 20px; }
+
+  /* Innenraum */
+  .cabinet {
+    margin-top: 10px;
+    display: grid; grid-template-columns: 1fr 34%; gap: 8px;
+    border-radius: 8px 8px 12px 12px;
+  }
+  .compartment {
+    position: relative; display: flex; flex-direction: column;
+    background: radial-gradient(120% 60% at 50% 0%, var(--inside-lamp), var(--inside) 70%);
+    border: 1px solid var(--enamel-edge);
+    border-radius: 8px 8px 12px 12px;
+    padding: 10px 8px 6px;
+    min-height: 260px;
+  }
+  .rack { border-radius: 8px 12px 12px 8px; }
+  .lamp-on .compartment, .lamp-on .freezer-inside { animation: lamp .5s ease-out both; }
+  @keyframes lamp { 0% { filter: brightness(.55); } 30% { filter: brightness(.9); } 40% { filter: brightness(.7); } 100% { filter: none; } }
+  @media (prefers-reduced-motion: reduce) { .lamp-on .compartment, .lamp-on .freezer-inside { animation: none; } }
+
+  .shelf { padding: 4px 2px 8px; margin-bottom: 8px; position: relative; }
+  .shelf::after {
+    content: ""; position: absolute; left: -8px; right: -8px; bottom: 0; height: 5px;
+    background: linear-gradient(180deg, var(--glass), transparent);
+    border-top: 1px solid var(--glass);
+  }
+  .rack .shelf::after { left: -8px; right: -8px; height: 10px; border-top: 2px solid var(--glass); background: linear-gradient(180deg, color-mix(in srgb, var(--glass) 60%, transparent), transparent); }
+  .items { display: flex; flex-wrap: wrap; gap: 5px; }
+  .drawer {
+    margin: auto -2px 0; padding: 8px 6px 10px; border-radius: 6px 6px 10px 10px;
+    background: color-mix(in srgb, var(--glass) 45%, transparent);
+    border: 1px solid var(--glass);
+  }
+  .drawer .shelf::after { display: none; }
+  .hollow { color: var(--muted); font-size: 13px; padding: 6px 2px; }
+
+  /* Etikett */
+  .tag {
+    position: relative; display: block; text-align: left; cursor: pointer;
+    background: var(--tag); border: 0; border-radius: 6px;
+    padding: 6px 8px 9px; min-width: 0; max-width: 100%;
+    box-shadow: 0 1px 2px var(--shadow);
+    overflow: hidden;
+  }
+  .rack .tag { width: 100%; }
+  .tag b { display: block; font-weight: 600; font-size: 14px; line-height: 1.2; overflow-wrap: anywhere; }
+  .tag span { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .tag::after {
+    content: ""; position: absolute; left: 0; bottom: 0; height: 4px;
+    width: calc(var(--level) * 100%); background: var(--state);
+  }
+  .tag::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--state); }
+  .tag.gruen { --state: var(--gruen); }
+  .tag.gelb { --state: var(--gelb); }
+  .tag.rot { --state: var(--rot); }
+  .tag.rot b { text-decoration: line-through; text-decoration-color: var(--rot); text-decoration-thickness: 1.5px; }
+
+  /* Vorratsregal */
+  .pantry { margin-top: 26px; }
+  .pantry h2, .extra h2 { font-size: 17px; font-weight: 800; margin: 0 0 8px; }
+  .board { padding: 0 4px 10px; margin-bottom: 14px; position: relative; }
+  .board::after {
+    content: ""; position: absolute; left: -6px; right: -6px; bottom: 0; height: 9px; border-radius: 2px;
+    background: linear-gradient(180deg, var(--wood), var(--wood-edge));
+    box-shadow: 0 4px 6px -3px var(--shadow);
+  }
+
+  .extra { margin-top: 22px; font-size: 14px; color: var(--muted); }
+  .extra p { margin: 0 0 6px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); margin: 12px 2px 0; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
+
+  /* Detailblatt */
+  dialog {
+    border: 0; padding: 18px 18px 22px; width: min(100% - 24px, 460px);
+    border-radius: 16px; background: var(--inside); color: var(--ink);
+    box-shadow: 0 20px 50px var(--shadow);
+  }
+  dialog::backdrop { background: rgba(10, 20, 18, .35); }
+  dialog h3 { margin: 0 0 2px; font-size: 21px; font-weight: 800; }
+  dialog .cat { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+  dialog .cat:empty { margin: 0 0 8px; }
+  dialog dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0 0 16px; font-size: 15px; }
+  dialog dt { color: var(--muted); }
+  dialog dd { margin: 0; }
+  dialog .close { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--glass); background: var(--tag); cursor: pointer; font-weight: 600; }
 </style>
 </head>
 <body>
-<header>
-  <h1>Kühlschrank</h1>
-  <label class="upload">+ Rechnungen
-    <input id="file" type="file" accept="application/pdf" multiple>
-  </label>
-</header>
-<input id="q" type="search" placeholder="Suchen, z. B. Milch">
-<div id="note" class="note"></div>
-<main id="list"><p class="empty">Lade …</p></main>
+<div class="wrap">
+  <div class="top">
+    <div class="today" id="today"></div>
+    <label class="button">+ Rechnungen
+      <input id="file" type="file" accept="application/pdf" multiple>
+    </label>
+  </div>
+  <p class="notice" id="notice" role="status"></p>
+
+  <div class="fridge" id="fridge">
+    <div class="freezer-door" id="freezer-door">
+      <section class="note" id="note" aria-label="Einkaufsliste"><h2>Einkaufsliste</h2><p class="empty">…</p></section>
+      <button class="handle" id="freezer-handle" aria-expanded="false" aria-controls="freezer-inside">Tiefkühler öffnen</button>
+    </div>
+    <div class="freezer-inside" id="freezer-inside" hidden></div>
+
+    <div class="cabinet">
+      <div class="compartment" id="main"></div>
+      <div class="compartment rack" id="rack"></div>
+    </div>
+    <span class="badge" aria-hidden="true">Nicks Kühlschrank</span>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--gruen)"></i>sicher da</span>
+    <span><i style="background:var(--gelb)"></i>bald weg</span>
+    <span><i style="background:var(--rot)"></i>abgelaufen oder aufgebraucht</span>
+  </div>
+
+  <section class="pantry">
+    <h2>Vorratsregal</h2>
+    <div id="pantry"></div>
+  </section>
+
+  <section class="extra" id="extra"></section>
+</div>
+
+<dialog id="detail" aria-labelledby="detail-name">
+  <h3 id="detail-name"></h3>
+  <p class="cat" id="detail-cat"></p>
+  <dl id="detail-facts"></dl>
+  <button class="close" id="detail-close">Schließen</button>
+</dialog>
 
 <script>
+// Ein Boden pro Gruppe, wie in einem echten Kühlschrank.
+const SHELVES = {
+  kuehlschrank: [["milch", "kaese_frisch", "kaese"], ["aufstrich", "fleisch"], ["belegt"]],
+  drawer: [["gemuese"]],
+  tuer: [["shots"]],
+  tiefkuehler: [["tk"]],
+  vorrat: [["obst", "gebaeck"], ["nudeln", "sugo", "muesli"], ["suesses"], ["getraenke"]],
+};
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const euro = c => (c / 100).toLocaleString("de-AT", { style: "currency", currency: "EUR" });
-const DAY = 86400000;
-let items = [];
+const tage = n => n === 1 ? "1 Tag" : `${n} Tagen`;
+const ago = n => n === 0 ? "heute" : n === 1 ? "gestern" : `vor ${n} Tagen`;
+let byId = {};
+let freezerCount = 0;
 
-function daysAgo(iso) {
-  const d = new Date(iso); d.setHours(0, 0, 0, 0);
-  const t = new Date(); t.setHours(0, 0, 0, 0);
-  return Math.round((t - d) / DAY);
+function updateHandle() {
+  const open = !$("freezer-inside").hidden;
+  $("freezer-handle").textContent = open ? "Tiefkühler schließen" : `Tiefkühler öffnen (${freezerCount})`;
+  $("freezer-handle").setAttribute("aria-expanded", open);
+  $("freezer-door").classList.toggle("open", open);
 }
-function whenText(n) {
-  return n === 0 ? "heute" : n === 1 ? "gestern" : `vor ${n} Tagen`;
-}
-function group(n) {
-  return n <= 7 ? "Letzte 7 Tage" : n <= 30 ? "Letzte 30 Tage" : "Älter";
-}
-const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-function render() {
-  const q = document.getElementById("q").value.trim().toLowerCase();
-  const shown = items.filter(i => i.text.toLowerCase().includes(q));
-  const list = document.getElementById("list");
-  if (!shown.length) {
-    list.innerHTML = `<p class="empty">${items.length ? "Nichts gefunden." : "Noch keine Rechnungen. Oben „+ Rechnungen“ tippen."}</p>`;
-    return;
+function stateText(i) {
+  if (i.status === "rot") return i.expired ? "abgelaufen" : "wohl aufgebraucht";
+  if (i.status === "gelb") return i.days_left <= 1 ? "bald weg" : `bald weg, ca. ${i.days_left} Tage`;
+  return i.days_left === 1 ? "noch ca. 1 Tag" : `noch ca. ${i.days_left} Tage`;
+}
+
+function tag(i) {
+  byId[i.id] = i;
+  return `<button class="tag ${i.status}" style="--level:${i.remaining}" data-id="${i.id}">
+    <b>${esc(i.name)}</b><span>${stateText(i)}</span></button>`;
+}
+
+function shelves(items, groups, cls = "shelf") {
+  return groups.map(keys => {
+    const rows = keys.flatMap(k => items.filter(i => i.category === k));
+    return rows.length ? `<div class="${cls}"><div class="items">${rows.map(tag).join("")}</div></div>` : "";
+  }).join("");
+}
+
+function render(data, shopping) {
+  byId = {};
+  const d = new Date(data.today);
+  $("today").textContent = "Stand " + d.toLocaleDateString("de-AT", { weekday: "long", day: "numeric", month: "long" });
+
+  const at = s => data.items.filter(i => i.storage === s);
+  const fridgeItems = at("kuehlschrank");
+  const veg = fridgeItems.filter(i => SHELVES.drawer.includes(i.category));
+  $("main").innerHTML =
+    (shelves(fridgeItems, SHELVES.kuehlschrank) || `<p class="hollow">Im Kühlschrank ist wahrscheinlich nichts mehr.</p>`) +
+    `<div class="drawer">${shelves(veg, SHELVES.drawer) || `<p class="hollow">Gemüsefach leer</p>`}</div>`;
+  $("rack").innerHTML = shelves(at("tuer"), SHELVES.tuer) || `<p class="hollow">Türfach leer</p>`;
+
+  const frozen = at("tiefkuehler");
+  $("freezer-inside").innerHTML = shelves(frozen, SHELVES.tiefkuehler) || `<p class="hollow">Wahrscheinlich nichts eingefroren.</p>`;
+  freezerCount = frozen.length;
+  updateHandle();
+
+  $("pantry").innerHTML = shelves(at("vorrat"), SHELVES.vorrat, "board") || `<p class="hollow">Im Vorrat ist wahrscheinlich nichts mehr.</p>`;
+
+  $("note").innerHTML = `<h2>Einkaufsliste</h2>` + (shopping.length
+    ? `<ul>${shopping.map(s => `<li>${esc(s.name)}<small>alle ${Math.round(s.interval_days)} T.</small></li>`).join("")}</ul>`
+    : `<p class="empty">Nichts fällig.</p>`);
+
+  const extra = [];
+  if (data.unknown.length) {
+    extra.push(`<p>Noch keinem Produkt zugeordnet: ${data.unknown.map(u => esc(u.text)).join(", ")}</p>`);
   }
-  const groups = {};
-  for (const i of shown) (groups[group(daysAgo(i.last_bought))] ??= []).push(i);
-  list.innerHTML = Object.entries(groups).map(([title, rows]) => `
-    <h2>${title}</h2>
-    <ul>${rows.map(i => `
-      <li>
-        <div>
-          <div class="name">${esc(i.text)}${i.needs_review ? ' <span class="flag" title="Bon prüfen">⚠</span>' : ""}</div>
-          <div class="meta">${whenText(daysAgo(i.last_bought))} · ${i.times_bought}× gekauft</div>
-        </div>
-        <div class="right">
-          <div>${i.last_quantity > 1 ? i.last_quantity + "× " : ""}${euro(i.last_unit_price)}</div>
-        </div>
-      </li>`).join("")}
-    </ul>`).join("");
+  $("extra").innerHTML = extra.join("");
 }
+
+function showDetail(i) {
+  $("detail-name").textContent = i.name;
+  $("detail-cat").textContent = i.category_label === i.name ? "" : i.category_label;
+  const facts = [
+    ["Zuletzt gekauft", `${ago(i.days_since)}${i.last_quantity > 1 ? `, ${i.last_quantity} Stück` : ""}`],
+    ["Preis", euro(i.last_price)],
+    ["Gekauft", `${i.times_bought}× laut deinen Rechnungen`],
+    ["Nachkauf", i.interval_days ? `etwa alle ${tage(Math.round(i.interval_days)).replace("Tagen", "Tage")}` : "noch zu wenige Käufe"],
+    ["Geschätzt", `reicht ca. ${tage(i.expected_days).replace("Tagen", "Tage")}`],
+    ["Stand", stateText(i)],
+  ];
+  $("detail-facts").innerHTML = facts.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("");
+  $("detail").showModal();
+}
+
+document.addEventListener("click", e => {
+  const t = e.target.closest(".tag");
+  if (t) showDetail(byId[t.dataset.id]);
+});
+$("freezer-handle").addEventListener("click", () => {
+  $("freezer-inside").hidden = !$("freezer-inside").hidden;
+  updateHandle();
+});
+$("detail-close").addEventListener("click", () => $("detail").close());
+$("detail").addEventListener("click", e => { if (e.target === $("detail")) $("detail").close(); });
 
 async function load() {
-  const [itemsRes, receiptsRes] = await Promise.all([fetch("/api/items"), fetch("/api/receipts")]);
-  items = await itemsRes.json();
-  const receipts = await receiptsRes.json();
+  const [fridge, shopping, receipts] = await Promise.all(
+    ["/api/fridge", "/api/shopping", "/api/receipts"].map(u => fetch(u).then(r => r.json())));
+  render(fridge, shopping);
   const review = receipts.filter(r => r.needs_review).length;
-  document.getElementById("note").textContent = review
-    ? `${review} Rechnung${review > 1 ? "en" : ""} zur Prüfung: Summe passt nicht oder Zeile unbekannt.` : "";
-  render();
+  if (!receipts.length) $("notice").textContent = "Noch keine Rechnungen. Lade deine SPAR-PDFs hoch, dann füllt sich der Kühlschrank.";
+  else if (review) $("notice").textContent = `${review} Rechnung${review > 1 ? "en" : ""} zur Prüfung: Summe passt nicht oder Zeile unbekannt.`;
 }
 
-document.getElementById("q").addEventListener("input", render);
-document.getElementById("file").addEventListener("change", async e => {
+$("file").addEventListener("change", async e => {
   const form = new FormData();
   for (const f of e.target.files) form.append("files", f);
   e.target.value = "";
-  const note = document.getElementById("note");
-  note.textContent = "Lade hoch …";
+  $("notice").textContent = "Lade hoch …";
   const res = await (await fetch("/api/upload", { method: "POST", body: form })).json();
   const count = s => res.filter(r => r.status === s).length;
+  const errors = res.filter(r => r.status.startsWith("Fehler")).length;
   await load();
-  const errors = res.filter(r => r.status.startsWith("Fehler"));
-  note.textContent = `${count("neu")} neu, ${count("doppelt")} schon vorhanden` +
+  $("notice").textContent = `${count("neu")} neu, ${count("doppelt")} schon vorhanden` +
     (count("prüfen") ? `, ${count("prüfen")} zur Prüfung` : "") +
-    (errors.length ? `, ${errors.length} nicht lesbar` : "") + ".";
+    (errors ? `, ${errors} nicht lesbar` : "") + ".";
 });
-load();
+
+load().then(() => $("fridge").classList.add("lamp-on"));
 </script>
 </body>
 </html>

@@ -31,10 +31,18 @@ CREATE TABLE IF NOT EXISTS receipt_lines (
 );
 CREATE INDEX IF NOT EXISTS idx_lines_text ON receipt_lines(text);
 
+CREATE TABLE IF NOT EXISTS categories (
+    key        TEXT PRIMARY KEY,
+    label      TEXT NOT NULL,
+    storage    TEXT NOT NULL,
+    shelf_days INTEGER NOT NULL,  -- Haltbarkeit ab Kauf
+    use_days   INTEGER NOT NULL   -- angenommene Verbrauchsdauer ohne eigene Kaufdaten
+);
+
 CREATE TABLE IF NOT EXISTS products (
     id         INTEGER PRIMARY KEY,
     name       TEXT NOT NULL UNIQUE,
-    category   TEXT,
+    category   TEXT REFERENCES categories(key),
     shelf_days INTEGER,           -- überschreibt die Kategorie-Haltbarkeit
     storage    TEXT               -- Kühlschrank, Tiefkühler, Vorrat
 );
@@ -52,4 +60,7 @@ def connect(path: Path | str = DB_PATH) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(SCHEMA)
+    from .seed import seed
+
+    seed(conn)
     return conn
